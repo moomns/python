@@ -1,13 +1,15 @@
 #!/c/Python34/python
 # coding: utf-8
 
+import nmrglue as ng
 from pandas import DataFrame, Series
 import numpy as np
-from struct import unpack, pack
-import binascii
+import copy
+#from struct import unpack, pack
+#import binascii
 import matplotlib.pyplot as plt
 
-
+"""
 class DataHeader:
 
     def __init__(self, f):
@@ -148,82 +150,80 @@ def fid_to_csv():
 
     f.close()
 
+"""
 
-def multi_to_single():
-    data = r"tachibanafid"
-    write = r"fid-single"
-    f = open(data, "rb")
-    g = open(write, "bw+")
-    #データヘッダ取得
-    header = DataHeader(f)
-    header.multi_to_single()
-    header.write_data_header(g)
+def multi_to_single(dic, data, procpar, directory):
+    import copy
 
-    #データブロックを読んでバイナリを数値化
-    for i in range(0, header.nblocks):
-        #バイナリを格納する配列
-        sdata = []
-        bheader = BlockHeader(f)
-        bheader.multi_to_single()
-        bheader.write_block_header(g)
-        #変換された数値データを一次元配列に保存
-        sdata = fid_decode(header, f, sdata)
-        #g.write(pack(">i", sdata))
-        
-        for j in sdata:
-            g.write(pack(">l", j))
-        
-        del bheader
+    #dataに読み込まれたマルチスライスをシングルスライスデータとして格納
+    slice0 = data[0::5]
+    slice1 = data[1::5]
+    slice2 = data[2::5]
+    slice3 = data[3::5]
+    slice4 = data[4::5]
 
-    f.close()
-    g.close()
+    #FileHeaderをシングルに書き換え
+    dic_single = copy.deepcopy(dic) #deepcopyで参照ではなく深いコピーに
+    dic_single["ntraces"] = 1
+    dic_single["bbytes"] = 2076
+
+    #スライス番号のフォルダにシングルのFIDをそれぞれ格納
+    ng.varian.write_fid(directory + r"slice0/fid", dic_single, slice0, overwrite=True)
+    ng.varian.write_fid(directory + r"slice1/fid", dic_single, slice1, overwrite=True)
+    ng.varian.write_fid(directory + r"slice2/fid", dic_single, slice2, overwrite=True)
+    ng.varian.write_fid(directory + r"slice3/fid", dic_single, slice3, overwrite=True)
+    ng.varian.write_fid(directory + r"slice4/fid", dic_single, slice4, overwrite=True)
 
 
-def multi_to_single_merge():
-    spin = r"spinfid"
-    data = r"tachibanafid"
-    write = r"fid-single-merge"
-    f = open(spin, "rb")
-    g = open(data, "rb")
-    h = open(write, "bw+")
-    #シングルスライスのデータヘッダ取得・書き込み
-    header_single = DataHeader(f)
-    header_single.write_data_header(h)
+def calculateFFT(Kspace):
+    #2次元フーリエ変換
+    #Aedesの結果と一致しない
+    #向こうは正規化されてる？
+    FTdata = np.fft.fft(np.fft.fft(Kspace, axis=1), axis=2)
+    FTdata = np.fft.fftshift(np.fft.fftshift(np.abs(FTdata), axes=1), axes=2)
 
-    #マルチスライスのデータヘッダ取得
-    #シングルスライスのデータヘッダを書き込んでいるから，ここでは読み飛ばすだけ
-    header = DataHeader(g)
+    #Reorient imageの該当部分だけ実装
+    #他の値("xyz"など)は未実装
+    FTdata = np.transpose(FTdata, (0, 2, 1))
+    FTdata = FTdata[:, ::-1, ::-1]
+    return FTdata
 
-    #データブロックを読んでバイナリを数値化
-    for i in range(0, header.nblocks):
-        #バイナリを格納する配列
-        sdata = []
-        trash = []
-        #ここではブロックヘッダもシングルスライスのものを流用
-        bheader_single = BlockHeader(f)
-        bheader_multi = BlockHeader(g)
-        bheader_multi.write_block_header(h)
-        #変換された数値データを一次元配列に保存
-        sdata = fid_decode(header, g, sdata)
-        #single-fidと同じだけmulti-fidも読み進める
-        trash = fid_decode(header_single, f, trash)
-        #g.write(pack(">i", sdata))
-        
-        for j in sdata:
-            h.write(pack(">l", j))
-        
-        del bheader_single
-        del bheader_multi
 
-    f.close()
-    g.close()
-    h.close()
+def showImage(data, directory, No=0, option=None):
+    #option=interpolationオプションについて
+    #None  ぼかしがかかる
+    #none, 'nearest' ぼかしがかからない
+    plt.imshow(data[No], cmap=plt.get_cmap("gray"), interpolation=option)
+    plt.colorbar()
+    plt.title(directory + r"fid-slice" + str(No))
+    plt.savefig(directory + r"fid-slice" + str(No) + r".png")
+    plt.show()
+
+
+def translateFID(dic, data, procpar, directory):
+    Kspace = np.array([data[0::5], data[1::5], data[2::5], data[3::5], data[4::5]])
+    print("Kspace = {}".format(Kspace.shape))
+
+    FTdata = calculateFFT(Kspace)
+    print("FTdata = {}".format(FTdata.shape))
+
+    return Kspace, FTdata
 
 
 def main():
-    fid_to_csv()
-    #multi_to_single()
-    #multi_to_single_merge()
+    directory = r"./TestData/0328_1_120-80.fid/"
+    filePROC = directory + r"procpar"
+    fileFID = directory + r"fid"
+    procpar = ng.varian.read_procpar(filePROC)
+    dic, data = ng.varian.read_fid_ntraces(fileFID, [1280, 256])
+
+    #multi->singleのfidに変換する場合
+    #multi_to_single(dic, data, procpar, directory)
+
+    Kspace, FTdata = translateFID(dic, data, procpar, directory)
+    showImage(FTdata, directory, 4)
+
+    #fid_to_csv()
 
 if __name__ == '__main__':
     main()
