@@ -96,6 +96,9 @@ ax.set_yticklabels([int(x) if int(x)==x else "" for x in ax.get_yticks().tolist(
 
 plt.tight_layout()
 
+#画像保存時に図の余白をできるだけ削除する
+plt.tight_layout()
+plt.savefig("1331.pdf", dpi=300, bbox_inches = 'tight', pad_inches=0)
 
 #colorbarをグラフにフィットさせる
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -108,6 +111,25 @@ im = ax.imshow(np.arange(100).reshape((10,10)), interpolation="none", extent=[xm
 divider = make_axes_locatable(ax)
 cax = divider.append_axes("right", size="5%", pad=0.05)
 plt.colorbar(im, cax=cax)
+
+#or
+divider = make_axes_locatable(ax_im)
+ax_cb = divider.new_horizontal(size="5%", pad=0.05)
+fig.add_axes(ax_cb)
+cb = plt.colorbar(im, cax=ax_cb)
+ax_cb.tick_params(labelsize=ticks_size)
+
+#colorbarをグラフにフィットさせる 横向き
+divider = make_axes_locatable(ax_im)
+ax_cb = divider.new_vertical(size="5%", pad=0.3, pack_start=True)
+fig.add_axes(ax_cb)
+#colorbarに表示したいticksを指定可能
+cb = plt.colorbar(im, cax=ax_cb, orientation="horizontal", ticks=[-0.8, -0.3, 0.3, 0.8])
+ax_cb.tick_params(labelsize=ticks_size)
+ax_cb.xaxis.set_ticks_position('top')
+#colorbarのtickの一部のみを消せる
+ax_cb.axes.get_xaxis().set_ticklabels([-0.8, "", "", 0.8])
+cb.set_label(label="ΔF/F0 (%)",size=14, labelpad=-28)
 
 #軸の文字サイズ変更
 ax1.tick_params(axis='both', which='major', labelsize=12)
@@ -212,7 +234,7 @@ sns.jointplot(data1, data2)
 #同時分布　色の濃淡で
 sns.jointplot(data1, data2, kind="hex")
 #データの分布を見る カーネル密度推定、ヒストグラム、ラグプロット
-sns.distplot(dataset, rug=True, hist=True, bins=25, 
+sns.distplot(dataset, rug=True, hist=True, bins=25,
     kde_kws={"color":"indianred", "label":"KDE PLOT"},
     hist_kws={"color":"blue", "label":"HISTGRAM"})
 #箱ひげ図
@@ -254,11 +276,11 @@ plt.rcParams['text.usetex'] = True
 #TrueType->42 OpenType/PostScript->1
 
 #日本語フォントの使用
-from pylab import *  
-import matplotlib.font_manager as fm  
-prop = fm.FontProperties(fname='N:\\WINDOWS\\Fonts\\ipamp.odf')  
-xlabel(u'本日は晴天なり', fontproperties=prop)  
-show() 
+from pylab import *
+import matplotlib.font_manager as fm
+prop = fm.FontProperties(fname='N:\\WINDOWS\\Fonts\\ipamp.odf')
+xlabel(u'本日は晴天なり', fontproperties=prop)
+show()
 
 or
 
