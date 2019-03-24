@@ -67,10 +67,24 @@ d = pd.DataFrame({'b1':ms['b1'], 'b2':ms['b2'], 'b3':ms['b3'], 'sigma':ms['sigma
 sns.set(font_scale=2)
 g = sns.PairGrid(d)
 g = g.map_lower(sns.kdeplot, cmap='Blues_d')
-g = g.map_diag(sns.distplot, kde=False)
+g = g.map_diag(sns.distplot, kde=True) #kde=False
 g = g.map_upper(corrfunc)
 g.fig.subplots_adjust(wspace=0.05, hspace=0.05)
 for ax in g.axes.flatten():
     for t in ax.get_xticklabels():
         _ = t.set(rotation=40)
 g.savefig('output/fig5-5.png')
+
+
+##
+# データの分布を見るための様々なプロット
+##
+
+#hueごとの1次元散布図を一直線に描くｰ>観測値の多い箇所は濃くなる
+sns.stripplot(x=x, y=y)
+#hueごとの散布図を、各観測点が被さらないように描く
+sns.swarmplot(x=x, y=y)
+#通常の箱ひげ図。外れ値は、第1/3四分位ー中央値＋第1/3四分位ー中央値の1.5倍を超えた箇所
+sns.boxplot(x=x, y=y)
+#バイオリンプロット。swarmplotをkdeで描く
+sns.violinplot(x=x, y=y)
