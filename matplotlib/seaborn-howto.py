@@ -50,6 +50,11 @@ with open('output/model_and_result.pkl', 'rb') as f:
 d_ori = pd.read_csv('input/data-attendance-1.txt')
 ms = fit_nuts.extract()
 
+"""
+対角プロット
+下三角にはKDEを
+上三角にはスピアマンの順位相関係数を表示
+"""
 def corrfunc(x, y, **kws):
     r, _ = stats.spearmanr(x, y)
     ax = plt.gca()
@@ -74,6 +79,24 @@ for ax in g.axes.flatten():
     for t in ax.get_xticklabels():
         _ = t.set(rotation=40)
 g.savefig('output/fig5-5.png')
+
+"""
+対角プロット
+ピアソンの積率相関係数とそのp値を表示
+"""
+def corrfunc(x, y, **kws):
+    (r, p) = stats.pearsonr(x, y)
+    ax = plt.gca()
+    ax.annotate("r = {:.2f} ".format(r),
+                xy=(.1, .9), xycoords=ax.transAxes, fontsize=12)
+    ax.annotate("p = {:.3f}".format(p),
+                xy=(.1, .8), xycoords=ax.transAxes, fontsize=12)
+
+df = sns.load_dataset("iris")
+df = df[df["species"] == "setosa"]
+graph = sns.pairplot(df)
+graph.map(corrfunc)
+plt.show()
 
 
 ##
