@@ -3,6 +3,52 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+#有意差のプロットの仕方
+#https://stackoverflow.com/questions/36578458/how-does-one-insert-statistical-annotations-stars-or-p-values-into-matplotlib
+#(A)
+import seaborn as sns, matplotlib.pyplot as plt
+
+tips = sns.load_dataset("tips")
+sns.boxplot(x="day", y="total_bill", data=tips, palette="PRGn")
+
+# statistical annotation
+x1, x2 = 2, 3   # columns 'Sat' and 'Sun' (first column: 0, see plt.xticks())
+y, h, col = tips['total_bill'].max() + 2, 2, 'k'
+plt.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1.5, c=col)
+plt.text((x1+x2)*.5, y+h, "ns", ha='center', va='bottom', color=col)
+
+plt.show()
+
+#(B)
+#statannot
+#https://github.com/webermarcolivier/statannot
+import matplotlib.pyplot as plt
+import seaborn as sns
+from statannot import add_stat_annotation
+
+sns.set(style="whitegrid")
+df = sns.load_dataset("tips")
+
+x = "day"
+y = "total_bill"
+order = ['Sun', 'Thur', 'Fri', 'Sat']
+ax = sns.boxplot(data=df, x=x, y=y, order=order)
+add_stat_annotation(ax, data=df, x=x, y=y, order=order,
+                    box_pairs=[("Thur", "Fri"), ("Thur", "Sat"), ("Fri", "Sun")],
+                    test='Mann-Whitney', text_format='star', loc='outside', verbose=2)
+
+#(C)
+x = "day"
+y = "total_bill"
+hue = "smoker"
+ax = sns.boxplot(data=df, x=x, y=y, hue=hue)
+add_stat_annotation(ax, data=df, x=x, y=y, hue=hue,
+                    box_pairs=[(("Thur", "No"), ("Fri", "No")),
+                                 (("Sat", "Yes"), ("Sat", "No")),
+                                 (("Sun", "No"), ("Thur", "Yes"))
+                                ],
+                    test='t-test_ind', text_format='full', loc='inside', verbose=2)
+plt.legend(loc='upper left', bbox_to_anchor=(1.03, 1))
 
 #<matplotlib>
 #plotの仕方
@@ -43,6 +89,9 @@ fig = plt.figure()
 fig.patch.set_alpha(0.)
 #imshowにおいて特定の条件を満たす値を描画せず透明のままにする
 np.ma.masked_where(data, condition)
+
+#時系列、datetimeがindexとなる散布図
+plt.plot_date(datetime_index, values)
 
 #軸の数値配列のget
 ax.get_xticks()
@@ -200,6 +249,68 @@ plt.xlabel('Number of training samples')
 plt.ylabel('Accuracy')
 plt.legend(loc='lower right')
 plt.ylim([0.8, 1.0])
+
+"""
+bin幅の揃った散布図と二次元ヒストグラムの表示
+https://github.com/jfrelinger/fcm/blob/master/docs/source/gallery/scatter_hist.py
+より改変?
+"""
+from matplotlib.ticker import NullFormatter
+nullfmt = NullFormatter()
+
+# definitions for the axes
+left, width = 0.1, 0.65
+bottom, height = 0.1, 0.65
+bottom_h = left_h = left + width + 0.02
+
+rect_scatter = [left, bottom, width, height]
+rect_histx = [left, bottom_h, width, 0.2]
+rect_histy = [left_h, bottom, 0.2, height]
+
+plt.figure(1, figsize=(8, 8))
+
+
+axScatter = plt.axes(rect_scatter)
+axHistx = plt.axes(rect_histx)
+axHisty = plt.axes(rect_histy)
+
+#no labels
+axHistx.xaxis.set_major_formatter(nullfmt)
+#axHistx.xaxis.set_minor_formatter(NullFormatter())
+axHisty.yaxis.set_major_formatter(nullfmt)
+#axHisty.yaxis.set_minor_formatter(NullFormatter())
+
+#axHistx.xaxis.set_major_locator(MultipleLocator(10))
+#axHistx.xaxis.set_minor_locator(MultipleLocator(10))
+#axHisty.yaxis.set_major_locator(MultipleLocator(10))
+#axHisty.yaxis.set_minor_locator(MultipleLocator(10))
+
+# the scatter plot:
+axScatter.scatter(x, y, alpha=0.5)#edgecolors='none', s=1)
+
+
+# now determine nice limits by hand:
+#binwidth = 0.5
+#xymax = np.max([np.max(np.fabs(x)), np.max(np.fabs(y))])
+#lim = (int(xymax / binwidth) + 1) * binwidth
+
+#bins = np.arange(0, lim + binwidth, binwidth)
+axHistx.hist(x, bins=np.arange(0, 25 +0.25, 0.25), alpha=0.5)#facecolor='blue', edgecolor='blue', histtype='stepfilled', )
+axHisty.hist(y, bins=np.arange(0, 80+1, 1), orientation='horizontal', alpha=0.5, label="test")#facecolor='blue', edgecolor='blue', histtype='stepfilled')
+
+axScatter.set_xlim((0, lim))
+axScatter.set_ylim((0, lim))
+axHistx.set_xlim(axScatter.get_xlim())
+axHistx.set_xticks(())
+axHistx.set_yticks(())
+axHisty.set_ylim(axScatter.get_ylim())
+axHisty.set_xticks(())
+axHisty.set_yticks(())
+
+axHisty.legend()
+
+plt.show()
+
 
 
 #一括して同じ書式の図を作る
